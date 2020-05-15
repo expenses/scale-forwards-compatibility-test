@@ -55,7 +55,7 @@ mod version_2 {
     #[derive(Debug, Clone)]
     pub struct Struct {
         pub version: u8,
-        pub bytes: [u8; 5],
+        pub bytes: [u8; 4],
     }
 
     impl Encode for Struct {
@@ -72,12 +72,7 @@ mod version_2 {
     impl Decode for Struct {
         fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
             let version = u8::decode(input)?;
-            let bytes = if version == 2 {
-                Option::decode(input)?.unwrap()
-            } else {
-                let bytes = Option::<[u8; 4]>::decode(input)?.unwrap();
-                [bytes[0], bytes[1], bytes[2], bytes[3], 0]
-            };
+            let bytes = Option::decode(input)?.unwrap();
 
             Ok(Self {
                 version, bytes
@@ -87,11 +82,7 @@ mod version_2 {
 
     impl PartialEq<Self> for Struct {
         fn eq(&self, other: &Self) -> bool {
-            if self.version == 2 && other.version == 2 {
-                self.bytes == other.bytes
-            } else {
-                self.bytes[..4] == other.bytes[..4]
-            }
+            self.bytes == other.bytes
         }
     }
 }
@@ -99,6 +90,7 @@ mod version_2 {
 #[cfg(test)]
 use parity_scale_codec::{Encode, Decode};
 
+#[cfg(test)]
 fn test_structs() -> (version_1::Struct, version_2::Struct) {
     let version_1_struct = version_1::Struct {
         version: 1,
@@ -108,7 +100,7 @@ fn test_structs() -> (version_1::Struct, version_2::Struct) {
 
     let version_2_struct = version_2::Struct {
         version: 2,
-        bytes: [55, 55, 55, 55, 55],
+        bytes: [55; 4],
     };
 
     (version_1_struct, version_2_struct)
