@@ -87,7 +87,11 @@ mod version_2 {
 
     impl PartialEq<Self> for Struct {
         fn eq(&self, other: &Self) -> bool {
-            self.bytes == other.bytes
+            if self.version == 2 && other.version == 2 {
+                self.bytes == other.bytes
+            } else {
+                self.bytes[..4] == other.bytes[..4]
+            }
         }
     }
 }
@@ -104,7 +108,7 @@ fn test_structs() -> (version_1::Struct, version_2::Struct) {
 
     let version_2_struct = version_2::Struct {
         version: 2,
-        bytes: [55, 55, 55, 55, 0],
+        bytes: [55, 55, 55, 55, 55],
     };
 
     (version_1_struct, version_2_struct)
