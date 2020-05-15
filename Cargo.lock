@@ -72,13 +72,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "psctest"
-version = "0.1.0"
-dependencies = [
- "parity-scale-codec",
-]
-
-[[package]]
 name = "quote"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -92,6 +85,13 @@ name = "radium"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "def50a86306165861203e7f84ecffbbdfdea79f0e51039b33de1e952358c47ac"
+
+[[package]]
+name = "scale-forwards-compatibility-test"
+version = "0.1.0"
+dependencies = [
+ "parity-scale-codec",
+]
 
 [[package]]
 name = "serde"

@@ -3,7 +3,7 @@
 mod version_1 {
     use parity_scale_codec::{Encode, Decode};
 
-    #[derive(Debug, Encode, Decode)]
+    #[derive(Debug, Encode, Decode, Clone)]
     pub struct Struct {
         pub version: u8,
         pub string: String,
@@ -104,10 +104,10 @@ mod version_3 {
     }
 }
 
-#[test]
-fn x() {
-    use parity_scale_codec::{Encode, Decode};
+#[cfg(test)]
+use parity_scale_codec::{Encode, Decode};
 
+fn test_structs() -> (version_1::Struct, version_2::Struct, version_3::Struct) {
     let version_1_struct = version_1::Struct {
         version: 1,
         string: "abc".into(),
@@ -128,13 +128,39 @@ fn x() {
         value_2: 8,
     };
 
-    // Forwards compatibility checks
+    (version_1_struct, version_2_struct, version_3_struct)
+}
+
+#[test]
+fn backwards_compatibility() {
+    let (version_1_struct, version_2_struct, version_3_struct) = test_structs();
+
+    assert_eq!(version_2_struct, version_2::Struct::decode(&mut (&*version_1_struct.encode())).unwrap());
+    assert_eq!(version_3_struct, version_3::Struct::decode(&mut (&*version_1_struct.encode())).unwrap());
+    assert_eq!(version_3_struct, version_3::Struct::decode(&mut (&*version_2_struct.encode())).unwrap())
+}
+
+#[test]
+fn forwards_compatibility() {
+    let (version_1_struct, version_2_struct, version_3_struct) = test_structs();
+
     assert_eq!(version_1_struct, version_1::Struct::decode(&mut (&*version_2_struct.encode())).unwrap());
     assert_eq!(version_1_struct, version_1::Struct::decode(&mut (&*version_3_struct.encode())).unwrap());
     assert_eq!(version_2_struct, version_2::Struct::decode(&mut (&*version_3_struct.encode())).unwrap());
+}
 
-    // Backwards compatibility check
-    assert_eq!(version_2_struct, version_2::Struct::decode(&mut (&*version_1_struct.encode())).unwrap());
-    assert_eq!(version_3_struct, version_3::Struct::decode(&mut (&*version_1_struct.encode())).unwrap());
-    assert_eq!(version_3_struct, version_3::Struct::decode(&mut (&*version_3_struct.encode())).unwrap());
+#[test]
+fn arrays() {
+    let (version_1_struct, _, version_3_struct) = test_structs();
+
+    type V1Array = [version_1::Struct; 2];
+    type V3Array = [version_3::Struct; 2];
+
+    let version_1_array = [version_1_struct.clone(), version_1_struct.clone()];
+    let version_3_array = [version_3_struct.clone(), version_3_struct.clone()];
+    
+    // Arrays are backwards compatible...
+    assert_eq!(version_3_array, V3Array::decode(&mut (&*version_1_array.encode())).unwrap());
+    // But not forwards compatible
+    assert_eq!(version_1_array, V1Array::decode(&mut (&*version_3_array.encode())).unwrap());
 }
