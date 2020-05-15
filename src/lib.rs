@@ -9,13 +9,26 @@
 //   input as an indicator of a field's existance, but this would only work for the last field.  
 
 mod version_1 {
-    use parity_scale_codec::{Encode, Decode};
+    use parity_scale_codec::{Encode, Decode, Input, Error};
 
-    #[derive(Debug, Clone, Encode, Decode)]
+    #[derive(Debug, Clone, Encode)]
     pub struct Struct {
         pub version: u8,
         pub bytes: Option<[u8; 4]>,
         pub names: Option<Vec<String>>
+    }
+
+    impl Decode for Struct {
+        fn decode<I: Input>(input: &mut I) -> Result<Self, Error> {
+            // We want to downgrade the version here as we don't have any new fields the later versions might have.
+            let _ = u8::decode(input)?;
+            let bytes = Option::decode(input)?;
+            let names = Option::decode(input)?;
+            Ok(Self {
+                version: 1,
+                bytes, names
+            })
+        }
     }
 
     impl PartialEq<Self> for Struct {
@@ -81,17 +94,21 @@ mod version_2_b {
     pub struct Struct {
         pub version: u8,
         pub names: Vec<String>,
+        pub value: Option<u32>
     }
 
     impl Encode for Struct {
         fn size_hint(&self) -> usize {
-            self.version.size_hint() + None::<[u8; 4]>.size_hint() + Some(&self.names).size_hint()
+            self.version.size_hint() + None::<[u8; 4]>.size_hint() + Some(&self.names).size_hint() + self.value.map(|value| value.size_hint()).unwrap_or(0)
         }
 
         fn encode_to<T: Output>(&self, dest: &mut T) {
             dest.push(&self.version);
             dest.push(&None::<[u8; 4]>);
             dest.push(&Some(&self.names));
+            if let Some(value) = self.value {
+                dest.push(&value);
+            }
         }
     }
 
@@ -101,8 +118,14 @@ mod version_2_b {
             let _ = Option::<[u8; 4]>::decode(input)?;
             let names = Option::decode(input)?.unwrap();
 
+            let value = if version == 2 {
+                Some(u32::decode(input)?)
+            } else {
+                None
+            };
+
             Ok(Self {
-                version, names
+                version, names, value
             })
         }
     }
@@ -133,7 +156,8 @@ fn test_structs() -> (version_1::Struct, version_2_a::Struct, version_2_b::Struc
 
     let version_2_b_struct = version_2_b::Struct {
         version: 2,
-        names: vec!["hello".into(), "world".into()]
+        names: vec!["hello".into(), "world".into()],
+        value: Some(12)
     };
 
     (version_1_struct, version_2_a_struct, version_2_b_struct)
